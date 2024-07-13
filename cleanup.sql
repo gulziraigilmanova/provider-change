@@ -48,7 +48,7 @@ WHERE Patient_Pseudonym IN (SELECT DISTINCT Patient_Pseudonym
                                           '13359'
                                 ))
 -- delete emergency
-  AND Fallstatus != 'Notfalldienst/Vertretung/Notfall'
+  AND Fallstatus not in ('Notfalldienst/Vertretung/Notfall', 'vorstationär')
 -- keep only adults
   AND Min_Age >= 18
 -- Delete patients with diverse sex (unfortunately the base is too small - 2 patients)
