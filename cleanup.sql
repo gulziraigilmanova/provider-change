@@ -48,7 +48,7 @@ WHERE Patient_Pseudonym IN (SELECT DISTINCT Patient_Pseudonym
                                           '13359'
                                 ))
 -- delete emergency
-  AND Fallstatus not in ('Notfalldienst/Vertretung/Notfall', 'vorstationär')
+  AND Fallstatus NOT IN ('Notfalldienst/Vertretung/Notfall', 'vorstationär')
 -- keep only adults
   AND Min_Age >= 18
 -- Delete patients with diverse sex (unfortunately the base is too small - 2 patients)
@@ -80,17 +80,34 @@ WHERE id IN (SELECT f.id
                                  ON f.patient = m.patient
              WHERE f.charge < m.charge);
 
+
+-- identify first admission
+CREATE TABLE min_admission_quarter AS
+SELECT id, patient, charge, quarter
+FROM (SELECT id,
+             patient,
+             charge,
+             quarter,
+             ROW_NUMBER()
+                     OVER (PARTITION BY patient ORDER BY charge) AS rn
+      FROM filtered_plz
+      WHERE status IN ('stationär', 'teilstationär')) AS a
+WHERE rn = 1
+;
+
 -- create new table with patients that were
 -- at least twice Outpatient with diagnose F or empty
 CREATE TABLE study AS
 SELECT *
 FROM filtered_plz
-WHERE patient IN (SELECT patient
-                  FROM filtered_plz
-                  WHERE discharge = ''
-                  GROUP BY patient
+WHERE patient IN (SELECT f.patient
+                  FROM filtered_plz AS f
+                           LEFT JOIN min_admission_quarter maq ON f.patient = maq.patient
+                  WHERE f.discharge = ''
+                    AND (f.charge < maq.charge OR maq.charge IS NULL)
+                  GROUP BY f.patient
                   HAVING COUNT(*) > 1
-                  ORDER BY patient)
+                  ORDER BY f.patient)
   AND patient IN (SELECT DISTINCT patient
                   FROM filtered_plz
                   WHERE (diagnose LIKE 'F%' OR diagnose = ''))
