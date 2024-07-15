@@ -5,21 +5,26 @@ WHERE discharge != ''
 GROUP BY patient, quarter
 ORDER BY patient, quarter;
 
-
 -- for survival analysis (multistate)
--- CREATE TABLE survival AS
+CREATE TABLE survival AS
 SELECT s.id,
        s.patient,
        s.sex,
        s.age,
        s.year_quarter,
        s.quarter - m.quarter AS relative_quarter,
-       (s.quarter - m.quarter) * 3 AS start_time,
-       (s.quarter - m.quarter) * 3 + 3 AS stop_time,
+       (s.quarter - m.quarter) * 3 AS entry,
+       (s.quarter - m.quarter) * 3 + 3 AS exit,
        s.provider
            != LAG(s.provider, 1, s.provider)
                   OVER (PARTITION BY s.patient ORDER BY s.quarter) AS provider_changed,
        COALESCE(SUM(a.admissions), 0) > 0 AS inpatient_stay,
+       INSTR(GROUP_CONCAT(DISTINCT SUBSTR(s.diagnose, 0, 3)), 'F2') > 0
+           OR INSTR(GROUP_CONCAT(DISTINCT SUBSTR(s.diagnose, 0, 4)), 'F31') > 0
+           OR s.diagnose = 'F32.2'
+           OR s.diagnose = 'F32.3'
+           OR s.diagnose = 'F33.2'
+           OR s.diagnose = 'F33.3' > 0 AS severe,
        MIN((s.provider
            != LAG(s.provider, 1, s.provider)
                   OVER (PARTITION BY s.patient ORDER BY s.quarter)) + (COALESCE(a.admissions, 0) > 0) * 2,
@@ -35,100 +40,104 @@ ORDER BY s.patient, year_quarter
 -- LIMIT 100
 ;
 
-CREATE TABLE survival_complete AS
-SELECT MIN(x.id) AS id,
-       x.patient,
-       x.sex,
-       x.age,
-       x.year_quarter,
-       x.start_time,
-       x.stop_time,
-       x.provider_changed,
-       x.inpatient_stay,
+CREATE TABLE survival_history AS
+SELECT MIN(sh.id) AS id,
+       sh.patient,
+       sh.sex,
+       sh.age,
+       sh.year_quarter,
+       sh.entry,
+       sh.exit,
+       sh.provider_changed,
+       sh.inpatient_stay,
        GROUP_CONCAT(DISTINCT n.diagnose) AS diagnoses,
-       INSTR(GROUP_CONCAT(DISTINCT SUBSTR(n.diagnose, 0, 3)), 'F2') > 0
-           OR INSTR(GROUP_CONCAT(DISTINCT SUBSTR(n.diagnose, 0, 4)), 'F31') > 0
-           OR n.diagnose = 'F32.2'
-           OR n.diagnose = 'F32.3'
-           OR n.diagnose = 'F33.2'
-           OR n.diagnose = 'F33.3' > 0 AS severe,
+       (SELECT MAX(severe) FROM survival WHERE patient = sh.patient) AS severe,
        -- todo: calculate comorbidity
-       x.from_state,
-       MAX(x.state, x.from_state) AS to_state
+       sh.from_state,
+       MAX(sh.state, sh.from_state) AS to_state
 FROM (SELECT s.*,
              COALESCE(
-                     (SELECT MAX(x.state)
-                      FROM survival AS x
-                      WHERE s.patient = x.patient
-                        AND x.start_time < s.start_time),
+                     (SELECT MAX(sb.state)
+                      FROM survival AS sb
+                      WHERE s.patient = sb.patient
+                        AND sb.entry < s.entry),
                      0
              ) AS from_state
       FROM survival AS s
-      ORDER BY s.patient + 0, s.Year_Quarter) AS x
+      ORDER BY s.patient + 0, s.Year_Quarter) AS sh
          INNER JOIN study AS n
-                    ON n.patient = x.patient
-                        AND n.year_quarter = x.year_quarter
-GROUP BY x.patient, x.year_quarter
-ORDER BY x.patient, x.year_quarter;
+                    ON n.patient = sh.patient
+                        AND n.year_quarter = sh.year_quarter
+GROUP BY sh.patient, sh.year_quarter
+ORDER BY sh.patient, sh.year_quarter;
 
 -- delete extra visits after first state "2"
 DELETE
--- SELECT *
-FROM survival_complete
+FROM survival_history
 WHERE from_state = 2
   AND to_state = 2;
 
 CREATE TABLE clustered_survival AS
 SELECT *,
        CHAR(65 + SUM(is_new_cluster)
-                     OVER (PARTITION BY patient + 0 ORDER BY start_time RANGE UNBOUNDED PRECEDING)) AS cluster_id
+                     OVER (PARTITION BY patient + 0 ORDER BY entry RANGE UNBOUNDED PRECEDING)) AS cluster_id
 FROM (SELECT *, distance > 6 AS is_new_cluster
       FROM (SELECT *,
-                   start_time -
-                   LAG(start_time, 1, start_time)
-                       OVER (PARTITION BY patient ORDER BY start_time) AS distance
-            FROM survival_complete
-            ORDER BY patient, start_time))
+                   entry -
+                   LAG(entry, 1, entry)
+                       OVER (PARTITION BY patient ORDER BY entry) AS distance
+            FROM survival_history
+            ORDER BY patient, entry))
 ;
 
-CREATE TABLE clustered_totals AS
-SELECT patient, cluster_id, COUNT(*) AS num_quarters
-FROM clustered_survival
--- WHERE patient IN (SELECT DISTINCT patient FROM clustered_survival WHERE cluster_id != 'A')
-GROUP BY patient, cluster_id;
-
-CREATE TABLE largest_cluster AS
-SELECT patient, cluster_id, MAX(num_quarters) AS num_quarters
-FROM clustered_totals
-GROUP BY patient;
-
-
--- delete patients where the biggest cluster is size 1 (only one line)
+-- delete clusters that are not the first one
 DELETE
-FROM clustered_totals
+FROM clustered_survival
+WHERE cluster_id != 'A';
+
+-- delete patients that have only a single visit (after cleaning the clusters)
+DELETE
+FROM clustered_survival
+WHERE ROWID IN (SELECT ROWID
+                FROM clustered_survival
+                GROUP BY patient, cluster_id
+                HAVING COUNT(*) = 1);
+
+-- aux table to turn last final state 1 into 99
+CREATE TABLE max_start AS
+SELECT patient, MAX(entry) AS mstart
+FROM clustered_survival
 WHERE patient IN (SELECT patient
-                  FROM largest_cluster
-                  WHERE num_quarters = 1);
-
-DELETE
-FROM largest_cluster
-WHERE num_quarters = 1
+                  FROM (SELECT patient, MAX(to_state) AS mst
+                        FROM clustered_survival
+                        GROUP BY patient
+                        ORDER BY patient)
+                  WHERE mst = 1)
+GROUP BY patient
+ORDER BY patient
 ;
 
-DELETE
-FROM clustered_totals
-WHERE ROWID IN (SELECT ct.ROWID
-                FROM clustered_totals AS ct
-                         INNER JOIN largest_cluster AS lc
-                                    ON ct.patient = lc.patient
-                                        AND ct.cluster_id != lc.cluster_id);
-
-
-SELECT *
-FROM clustered_totals
-WHERE patient = 225
+-- set final state 1 to 99
+UPDATE clustered_survival
+SET to_state = 99
+WHERE id IN (SELECT id
+             FROM clustered_survival AS s
+                      INNER JOIN max_start AS m
+                                 ON s.patient = m.patient
+                                     AND s.entry = m.mstart)
 ;
 
-SELECT *
-FROM clustered_survival
-WHERE patient = 225;
+-- survival_complete
+SELECT patient,
+       sex,
+       age,
+       year_quarter,
+       entry,
+       exit,
+       provider_changed,
+       inpatient_stay,
+       diagnoses,
+       severe,
+       from_state,
+       to_state
+FROM clustered_survival;
