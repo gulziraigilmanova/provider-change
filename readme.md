@@ -2,8 +2,8 @@
 
 ## Requirements
 
-- SQLite 3
-- R and R Studio
+- [SQLite 3](https://www.sqlite.org/)
+- [R](https://www.r-project.org/) and [RStudio](https://posit.co/download/rstudio-desktop/) IDE
 
 ## Data cleaning
 
@@ -21,15 +21,15 @@ used for this step.
 
 4. Import the data:
 
-```sqlite3
-.mode csv
-.import <YOUR_FILE>.csv original
-.mode table
-# visualize your data to make sure it's properly imported
-select * from original limit 10;
-# save to database.sqlite file
-.save database.sqlite
-```
+   ```sqlite3
+   .mode csv
+   .import <YOUR_FILE>.csv original
+   .mode table
+   # visualize your data to make sure it's properly imported
+   select * from original limit 10;
+   # save to database.sqlite file
+   .save database.sqlite
+   ```
 
 5. You should now have a `database.sqlite` file containing your database, with a
    table called `original` inside.
