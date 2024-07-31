@@ -144,7 +144,6 @@ SELECT MIN(sh.id) AS id,
            SELECT MAX(severe)
            FROM survival_days
            WHERE patient = sh.patient) AS severe,
-       -- todo: calculate comorbidity
        sh.from_state,
        MAX(sh.state, sh.from_state) AS to_state
 FROM (
