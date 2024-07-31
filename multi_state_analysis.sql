@@ -64,7 +64,7 @@ FROM (SELECT s.*,
                      0
              ) AS from_state
       FROM survival AS s
-      ORDER BY s.patient + 0, s.Year_Quarter) AS sh
+      ORDER BY s.patient, s.Year_Quarter) AS sh
          INNER JOIN study AS n
                     ON n.patient = sh.patient
                         AND n.year_quarter = sh.year_quarter
@@ -80,7 +80,7 @@ WHERE from_state = 2
 CREATE TABLE clustered_survival AS
 SELECT *,
        CHAR(65 + SUM(is_new_cluster)
-                     OVER (PARTITION BY patient + 0 ORDER BY entry RANGE UNBOUNDED PRECEDING)) AS cluster_id
+                     OVER (PARTITION BY patient ORDER BY entry RANGE UNBOUNDED PRECEDING)) AS cluster_id
 FROM (SELECT *, distance > 6 AS is_new_cluster
       FROM (SELECT *,
                    entry -
@@ -141,3 +141,24 @@ SELECT patient,
        from_state,
        to_state
 FROM clustered_survival;
+
+
+CREATE TABLE survival_transition AS
+-- insert into survival_transition
+SELECT patient,
+       sex,
+       age,
+       MIN(entry) AS entry,
+       MAX(exit) AS exit,
+       MAX(provider_changed) AS provider_changed,
+       MAX(inpatient_stay) AS inpatient_stay,
+       GROUP_CONCAT(DISTINCT diagnoses) AS diagnoses,
+       MAX(severe) AS severe,
+       MIN(from_state) AS `from`,
+       MAX(to_state) AS `to`
+FROM clustered_survival
+WHERE from_state = 0
+--     from_state = 1
+-- and Patient_Pseudonym = 56
+GROUP BY patient
+ORDER BY patient, entry;
