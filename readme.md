@@ -1,4 +1,4 @@
-#
+# Provider Change Survival Analysis
 
 ## Requirements
 
@@ -60,3 +60,10 @@ sqlite3 -header -csv database.sqlite 'SELECT * FROM survival_transition_ts WHERE
 ```
 
 Now your CSV files should be in the [output](output) folder inside the project.
+
+## Running the analysis
+
+Now that all that data is ready, the analysis can run.
+For this, we will use R and RStudio.
+
+Open the project in RStudio and there, open the file [survival_analysis.r](survival_analysis.r).

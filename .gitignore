@@ -1,3 +1,4 @@
 *.csv
 *.sqlite
 *.sqlite-journal
+.Rproj.user
