@@ -1,0 +1,530 @@
+---
+title: "Provider Change: Survival Analysis"
+author: "Gulzira Igilmanova"
+output:
+  html_document:
+    fig_width: 16
+    fig_height: 9
+    toc: true
+    toc_depth: 4
+params:
+  inpatient_complete:    "output/survival_inpatient_complete.csv"
+  inpatient_severe:      "output/survival_inpatient_severe.csv"
+  inpatient_non_severe:  "output/survival_inpatient_non_severe.csv"
+  daypatient_complete:   "output/survival_daypatient_complete.csv"
+  daypatient_severe:     "output/survival_daypatient_severe.csv"
+  daypatient_non_severe: "output/survival_daypatient_non_severe.csv"
+---
+
+## Dependencies and Setup
+
+If you already don't have it, install the packages required to run the analysis.
+```{r dependencies, eval = FALSE}
+install.packages("kmi")
+install.packages("mvna")
+install.packages("etm")
+install.packages("survival")
+```
+
+Now some setup is necessary:
+```{r setup}
+library(kmi)
+library(mvna)
+library(etm)
+library(survival)
+
+# read the CSV files
+data_inpatient <- read.csv(params$inpatient_complete)
+data_inpatient_sev <- read.csv(params$inpatient_severe)
+data_inpatient_ns <- read.csv(params$inpatient_non_severe)
+
+data_daypatient <- read.csv(params$daypatient_complete)
+data_daypatient_sev <- read.csv(params$daypatient_severe)
+data_daypatient_ns <- read.csv(params$daypatient_non_severe)
+
+# aux variables
+states <- c("0", "1", "2")
+transitions <- c("0 1", "0 2", "1 2")
+transition_matrix <- matrix(FALSE, 3, 3, dimnames = list(c(0, 1, 2), c(0, 1, 2)))
+transition_matrix[1, 2:3] <- TRUE
+transition_matrix[2, 3] <- TRUE
+
+# Data Remap
+
+# Inpatient
+# sex remap W-1;M-0
+data_inpatient$sex <- ifelse(data_inpatient$sex == "W", 1, 0)
+data_inpatient_sev$sex <- ifelse(data_inpatient_sev$sex == "W", 1, 0)
+data_inpatient_ns$sex <- ifelse(data_inpatient_ns$sex == "W", 1, 0)
+
+# replace 99 with "cens" in the 'to' column
+data_inpatient$to[data_inpatient$to == 99] <- "cens"
+data_inpatient_sev$to[data_inpatient_sev$to == 99] <- "cens"
+data_inpatient_ns$to[data_inpatient_ns$to == 99] <- "cens"
+
+# Daypatient
+# sex remap W-1;M-0
+data_daypatient$sex <- ifelse(data_daypatient$sex == "W", 1, 0)
+data_daypatient_sev$sex <- ifelse(data_daypatient_sev$sex == "W", 1, 0)
+data_daypatient_ns$sex <- ifelse(data_daypatient_ns$sex == "W", 1, 0)
+
+# replace 99 with "cens" in the 'to' column
+data_daypatient$to[data_daypatient$to == 99] <- "cens"
+data_daypatient_sev$to[data_daypatient_sev$to == 99] <- "cens"
+data_daypatient_ns$to[data_daypatient_ns$to == 99] <- "cens"
+```
+
+## Tables
+
+### Table 2. Table of observed transitions
+
+```{r possible_transitions}
+# Inpatient table of possible transitions
+knitr::kable(table(data_inpatient$from, data_inpatient$to), caption = "Table 2.a. Inpatient Stay")
+
+# Daypatient table of possible transitions
+knitr::kable(table(data_daypatient$from, data_daypatient$to), caption = "Table 2.b. Daypatient Care")
+```
+
+### Table 3. Cox proportional hazards model (final State "Inpatient Stay")
+
+```{r table3}
+# INPATIENT STAY
+# initial to provider change 01
+cox_inpatient.01 <- coxph(
+  Surv(entry, exit, to == 1) ~ as.factor(severe)
+  + as.factor(comorbidity)
+  + I(age / 10)
+  + as.factor(sex),
+  data_inpatient,
+  subset = from == 0
+)
+summary(cox_inpatient.01)
+cox.zph(cox_inpatient.01)
+
+# initial to inpatient stay 02
+cox_inpatient.02 <- coxph(
+  Surv(entry, exit, to == 2) ~ as.factor(severe)
+  + as.factor(comorbidity)
+  + I(age / 10)
+  + as.factor(sex),
+  data_inpatient,
+  subset = from == 0
+)
+summary(cox_inpatient.02)
+cox.zph(cox_inpatient.02)
+
+# from provider change to inpatient stay 12
+cox_inpatient.12 <- coxph(
+  Surv(entry, exit, to == 2) ~ as.factor(severe)
+  + as.factor(comorbidity)
+  + I(age / 10)
+  + as.factor(sex),
+  data_inpatient,
+  subset = from == 1
+)
+summary(cox_inpatient.12)
+cox.zph(cox_inpatient.12)
+```
+
+### Table 4. Cox proportional hazards model (final State "Daypatient Care")
+
+```{r table4}
+# DAYPATIENT CARE
+# initial to provider change 01
+cox_daypatient.01 <- coxph(
+  Surv(entry, exit, to == 1) ~ as.factor(severe)
+  + as.factor(comorbidity)
+  + I(age / 10)
+  + as.factor(sex),
+  data_daypatient,
+  subset = from == 0
+)
+summary(cox_daypatient.01)
+cox.zph(cox_daypatient.01)
+
+# initial to daypatient care 02
+cox_daypatient.02 <- coxph(
+  Surv(entry, exit, to == 2) ~ as.factor(severe)
+  + as.factor(comorbidity)
+  + I(age / 10)
+  + as.factor(sex),
+  data_daypatient,
+  subset = from == 0
+)
+summary(cox_daypatient.02)
+cox.zph(cox_daypatient.02)
+
+# from provider change to daypatient care 12
+cox_daypatient.12 <- coxph(
+  Surv(entry, exit, to == 2) ~ as.factor(severe)
+  + as.factor(comorbidity)
+  + I(age / 10)
+  + as.factor(sex),
+  data_daypatient,
+  subset = from == 1
+)
+summary(cox_daypatient.12)
+cox.zph(cox_daypatient.12)
+```
+
+### Table 5. Cox proportional hazards of Transition 1 -\> 2 (Explorative Analysis of Covariates)
+
+```{r table5}
+# INPATIENT STAY
+# from provider change to inpatient stay 12
+summary(cox_inpatient.12)
+cox.zph(cox_inpatient.12)
+
+# DAYPATIENT CARE
+summary(cox_daypatient.12)
+cox.zph(cox_daypatient.12)
+```
+
+#### Markov Assumption tests
+
+```{r markov_assumption, warning = FALSE}
+# testing the Markov assumption for INPATIENT STAY
+coxph(Surv(entry, exit, to == "2") ~ entry,
+      data = subset(data_inpatient, from == "1"))
+
+# testing the Markov assumption for DAYPATIENT CARE
+coxph(Surv(entry, exit, to == "2") ~ entry,
+      data = subset(data_daypatient, from == "1"))
+```
+
+### Table 6. Time dependent covariates
+
+```{r table6}
+# time-dep covariates for INPATIENT STAY
+time_cox_inpatient <- coxph(
+  Surv(entry, exit, to == 2) ~ as.factor(from) + as.factor(severe) +
+    as.factor(comorbidity) + I(age / 10) +
+    as.factor(sex),
+  data_inpatient
+)
+summary(time_cox_inpatient)
+
+# time-dep covariates for DAYPATIENT CARE
+time_cox_daypatient <- coxph(
+  Surv(entry, exit, to == 2) ~ as.factor(from) + as.factor(severe)
+  + as.factor(comorbidity) + I(age / 10) +
+    as.factor(sex),
+  data_daypatient
+)
+summary(time_cox_daypatient)
+```
+
+## Figures
+
+### Figure 2. Cumulative hazards and transition probabilities from `State - 1` to
+
+`State - 2`
+
+```{r figure2, results = 'hide'}
+mvna.inpatient_sev <- mvna(data_inpatient_sev, states, transition_matrix, "cens")
+mvna.daypatient_sev <- mvna(data_daypatient_sev, states, transition_matrix, "cens")
+mvna.inpatient_ns <- mvna(data_inpatient_ns, states, transition_matrix, "cens")
+mvna.daypatient_ns <- mvna(data_daypatient_ns, states, transition_matrix, "cens")
+
+etm.inpatient_sev <- etm(
+  data_inpatient_sev,
+  states,
+  transition_matrix,
+  "cens",
+  s = 0
+)
+etm.daypatient_sev <- etm(
+  data_daypatient_sev,
+  states,
+  transition_matrix,
+  "cens",
+  s = 0
+)
+etm.inpatient_ns <- etm(
+  data_inpatient_ns,
+  states,
+  transition_matrix,
+  "cens",
+  s = 0
+)
+etm.daypatient_ns <- etm(
+  data_daypatient_ns,
+  states,
+  transition_matrix,
+  "cens",
+  s = 0
+)
+
+par(mfrow = c(1, 2))
+plot(
+  mvna.inpatient_sev,
+  tr.choice = c("1 2"),
+  col = "red",
+  cex = 1.5,
+  xlab = "",
+  ylab = "",
+  lwd = 1.8,
+  legend = FALSE,
+  cex.axis = 1.2,
+  ylim = c(0, 1)
+)
+lines(
+  mvna.inpatient_ns,
+  tr.choice = c("1 2"),
+  col = "green",
+  cex = 1.5,
+  lwd = 1.8
+)
+lines(
+  mvna.daypatient_sev,
+  tr.choice = c("1 2"),
+  col = "blue",
+  cex = 1.5,
+  lwd = 1.8
+)
+lines(
+  mvna.daypatient_ns,
+  tr.choice = c("1 2"),
+  col = "yellow",
+  cex = 1.5,
+  lwd = 1.8
+)
+par(family = "sans")
+mtext(
+  "Cumulative Hazard",
+  side = 2,
+  line = 3,
+  font = 2,
+  cex = 1.6
+)
+mtext(
+  "Days",
+  side = 1,
+  line = 3,
+  font = 2,
+  cex = 1.6
+)
+legend(
+  0.90,
+  0.95,
+  legend = c(
+    'Inpatient:SMI',
+    'Inpatient:non-SMI',
+    'Daypatient:SMI',
+    'Daypatient:non-SMI'
+  ),
+  col = c('red', 'green', 'blue', 'yellow'),
+  lty = 1,
+  cex = 1.2,
+  y.intersp = 1,
+  xjust = 0
+)
+
+#transition probability
+plot(
+  etm.inpatient_sev,
+  tr.choice = c("1 2"),
+  col = "red",
+  cex = 1.5,
+  xlab = "",
+  ylab = "",
+  lwd = 1.8,
+  legend = FALSE,
+  cex.axis = 1.2
+)
+lines(
+  etm.inpatient_ns,
+  tr.choice = c("1 2"),
+  col = "green",
+  cex = 1.5,
+  lwd = 1.8
+)
+lines(
+  etm.daypatient_sev,
+  tr.choice = c("1 2"),
+  col = "blue",
+  cex = 1.5,
+  lwd = 1.8
+)
+lines(
+  etm.daypatient_ns,
+  tr.choice = c("1 2"),
+  col = "yellow",
+  cex = 1.5,
+  lwd = 1.8
+)
+par(family = "sans")
+mtext(
+  "Transition Probability",
+  side = 2,
+  line = 3,
+  font = 2,
+  cex = 1.6
+)
+mtext(
+  "Days",
+  side = 1,
+  line = 3,
+  font = 2,
+  cex = 1.6
+)
+legend(
+  0.90,
+  0.95,
+  legend = c(
+    'Inpatient:SMI',
+    'Inpatient:non-SMI',
+    'Daypatient:SMI',
+    'Daypatient:non-SMI'
+  ),
+  col = c('red', 'green', 'blue', 'yellow'),
+  lty = 1,
+  cex = 1.2,
+  y.intersp = 1,
+  xjust = 0
+)
+```
+
+#### Confidence Intervals for Cumulative Hazards
+
+```{r ci_ch}
+summary(mvna.inpatient_sev)
+summary(mvna.daypatient_sev)
+summary(mvna.inpatient_ns)
+summary(mvna.daypatient_ns)
+```
+
+#### Confidence Intervals for Transition Probabilities for SMI and non-SMI groups
+
+```{r ci_tp}
+summary(etm.inpatient_sev, tr.choice = c("1 2"))
+summary(etm.daypatient_sev, tr.choice = c("1 2"))
+summary(etm.inpatient_ns, tr.choice = c("1 2"))
+summary(etm.daypatient_ns, tr.choice = c("1 2"))
+```
+
+### Figure 3. Cumulative hazards and transition probabilities of the complete model
+
+```{r figure3, results = 'hide'}
+# fulldata event: Inpatient stay
+# nelson-aalen estimator of cumulative incidences
+par(mfrow = c(2, 2), family = "sans")
+line_colors <- c("darkgrey", "darkgreen", "darkred")
+
+mvna.inpatient <- mvna(data_inpatient, states, transition_matrix, "cens")
+summary(mvna.inpatient)
+
+plot(
+  mvna.inpatient,
+  col = line_colors,
+  main = "Event: Inpatient Stay",
+  xlab = "Days",
+  lty = 1,
+  lwd = 2,
+  cex = 1.2,
+  legend = F
+)
+legend(
+  "topleft",
+  inset = c(0.05, 0.05),
+  legend = transitions,
+  col = line_colors,
+  lty = 1,
+  lwd = 2,
+  cex = 1.2,
+  bty = "o"
+)
+
+# aalen-johansen estimator of transition probabilities
+etm.inpatient <- etm(
+  data_inpatient,
+  states,
+  transition_matrix,
+  "cens",
+  s = 0,
+  covariance = F
+)
+summary(etm.inpatient)
+
+plot(
+  etm.inpatient,
+  tr.choice = transitions,
+  col = line_colors,
+  xlab = "Days",
+  lty = 1,
+  cex = 1.2,
+  lwd = 2,
+  font.lab = 2,
+  legend = F
+)
+legend(
+  "topleft",
+  inset = c(0.05, 0.05),
+  legend = transitions,
+  col = line_colors,
+  lty = 1,
+  lwd = 2,
+  cex = 1.2,
+  bty = "o"
+)
+
+# fulldata event: Daypatient care
+# nelson-aalen estimator of cumulative incidences
+mvna.daypatient <- mvna(data_daypatient, states, transition_matrix, "cens")
+summary(mvna.daypatient)
+
+plot(
+  mvna.daypatient,
+  col = line_colors,
+  main = "Event: Daypatient Care",
+  xlab = "Days",
+  lty = 1,
+  lwd = 2,
+  font.lab = 2,
+  cex = 1.2,
+  legend = F
+)
+legend(
+  "topleft",
+  inset = c(0.05, 0.05),
+  legend = transitions,
+  col = line_colors,
+  lty = 1,
+  lwd = 2,
+  cex = 1.2,
+  bty = "o"
+)
+
+# aalen-johansen estimator of transition probablities
+etm.daypatient <- etm(
+  data_daypatient,
+  states,
+  transition_matrix,
+  "cens",
+  s = 0,
+  covariance = F
+)
+summary(etm.daypatient)
+
+plot(
+  etm.daypatient,
+  tr.choice = transitions,
+  col = line_colors,
+  xlab = "Days",
+  lty = 1,
+  cex = 1.2,
+  lwd = 2,
+  font.lab = 2
+)
+legend(
+  "topleft",
+  inset = c(0.05, 0.05),
+  legend = transitions,
+  col = line_colors,
+  lty = 1,
+  lwd = 2,
+  cex = 1.2,
+  bty = "o"
+)
+```
