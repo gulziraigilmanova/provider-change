@@ -2,7 +2,8 @@ DROP TABLE IF EXISTS filtered_st;
 CREATE TABLE filtered_st AS
 SELECT ID + 0 AS id,
        Patient_Pseudonym + 0 AS patient,
-       Geschlecht AS sex,
+       -- sex remap W-1;M-0
+       Geschlecht == 'W' AS sex,
        Min_Age + 0 AS age,
        Behandler_pseudonym AS provider,
        Fallstatus AS status,
@@ -275,7 +276,7 @@ FROM (
 GROUP BY sh.patient, sh.charge
 ORDER BY sh.patient, sh.charge;
 
--- aux table to turn last final state 1 into 99
+-- aux table to turn last final state 1 into censored
 DROP TABLE IF EXISTS max_start_st;
 CREATE TABLE max_start_st AS
 SELECT patient, MAX(entry) AS mstart
@@ -292,9 +293,9 @@ GROUP BY patient
 ORDER BY patient
 ;
 
--- set final state 1 to 99
+-- set final state 1 to censored
 UPDATE survival_history_st
-SET to_state = 99
+SET to_state = 'cens'
 WHERE id IN (
     SELECT id
     FROM survival_history_st AS s
