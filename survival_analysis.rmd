@@ -2,7 +2,7 @@
 title: "Provider Change: Survival Analysis"
 author: "Gulzira Igilmanova"
 output:
-  html_document:
+  pdf_document:
     fig_width: 16
     fig_height: 9
     toc: true
@@ -396,7 +396,7 @@ summary(etm.daypatient_ns, tr.choice = c("1 2"))
 
 ### Figure 3. Cumulative hazards and transition probabilities of the complete model
 
-#### Figure 3.a. Event: Inpatient stay
+
 ```{r figure3a, results = 'hide'}
 # fulldata event: Inpatient stay
 # nelson-aalen estimator of cumulative incidences
@@ -472,7 +472,7 @@ legend(
 )
 ```
 
-#### Figure 3.b. Event: Daypatient care
+
 ```{r figure3b, results = 'hide'}
 # fulldata event: Daypatient care
 # nelson-aalen estimator of cumulative incidences
