@@ -242,7 +242,7 @@ plot(
   ylab = "",
   lwd = 1.8,
   legend = FALSE,
-  cex.axis = 1.2,
+  cex.axis = 1.5,
   ylim = c(0, 1)
 )
 lines(
@@ -250,21 +250,21 @@ lines(
   tr.choice = c("1 2"),
   col = "green",
   cex = 1.5,
-  lwd = 1.8
+  lwd = 2.5
 )
 lines(
   mvna.daypatient_sev,
   tr.choice = c("1 2"),
   col = "blue",
   cex = 1.5,
-  lwd = 1.8
+  lwd = 2.5
 )
 lines(
   mvna.daypatient_ns,
   tr.choice = c("1 2"),
   col = "yellow",
   cex = 1.5,
-  lwd = 1.8
+  lwd = 2.5
 )
 par(family = "sans")
 mtext(
@@ -292,7 +292,8 @@ legend(
   ),
   col = c('red', 'green', 'blue', 'yellow'),
   lty = 1,
-  cex = 1.2,
+  cex = 1.5,
+  lwd = 2,
   y.intersp = 1,
   xjust = 0
 )
@@ -307,28 +308,28 @@ plot(
   ylab = "",
   lwd = 1.8,
   legend = FALSE,
-  cex.axis = 1.2
+  cex.axis = 1.5
 )
 lines(
   etm.inpatient_ns,
   tr.choice = c("1 2"),
   col = "green",
   cex = 1.5,
-  lwd = 1.8
+  lwd = 2.5
 )
 lines(
   etm.daypatient_sev,
   tr.choice = c("1 2"),
   col = "blue",
   cex = 1.5,
-  lwd = 1.8
+  lwd = 2.5
 )
 lines(
   etm.daypatient_ns,
   tr.choice = c("1 2"),
   col = "yellow",
   cex = 1.5,
-  lwd = 1.8
+  lwd = 2.5
 )
 par(family = "sans")
 mtext(
@@ -356,7 +357,8 @@ legend(
   ),
   col = c('red', 'green', 'blue', 'yellow'),
   lty = 1,
-  cex = 1.2,
+  cex = 1.5,
+  lwd = 2,
   y.intersp = 1,
   xjust = 0
 )
@@ -382,10 +384,11 @@ summary(etm.daypatient_ns, tr.choice = c("1 2"))
 
 ### Figure 3. Cumulative hazards and transition probabilities of the complete model
 
-```{r figure3, results = 'hide'}
+#### Figure 3.a. Event: Inpatient stay
+```{r figure3a, results = 'hide'}
 # fulldata event: Inpatient stay
 # nelson-aalen estimator of cumulative incidences
-par(mfrow = c(2, 2), family = "sans")
+par(mfrow = c(1, 2), family = "sans")
 line_colors <- c("darkgrey", "darkgreen", "darkred")
 
 mvna.inpatient <- mvna(data_inpatient, states, transition_matrix, "cens")
@@ -394,12 +397,22 @@ summary(mvna.inpatient)
 plot(
   mvna.inpatient,
   col = line_colors,
-  main = "Event: Inpatient Stay",
+  ylim = c(0, 5),
   xlab = "Days",
+  font.lab = 2,
   lty = 1,
-  lwd = 2,
-  cex = 1.2,
-  legend = F
+  lwd = 3,
+  legend = F,
+  cex.lab = 1.6,
+  cex.axis = 1.5
+)
+mtext(
+  "Event: Inpatient Stay",
+  side = 3,
+  line = 1,
+  adj = 0,
+  font = 2,
+  cex = 1.6
 )
 legend(
   "topleft",
@@ -407,8 +420,8 @@ legend(
   legend = transitions,
   col = line_colors,
   lty = 1,
-  lwd = 2,
-  cex = 1.2,
+  lwd = 3,
+  cex = 1.7,
   bty = "o"
 )
 
@@ -429,10 +442,11 @@ plot(
   col = line_colors,
   xlab = "Days",
   lty = 1,
-  cex = 1.2,
-  lwd = 2,
+  lwd = 3,
   font.lab = 2,
-  legend = F
+  legend = F,
+  cex.lab = 1.6,
+  cex.axis = 1.5
 )
 legend(
   "topleft",
@@ -440,26 +454,39 @@ legend(
   legend = transitions,
   col = line_colors,
   lty = 1,
-  lwd = 2,
-  cex = 1.2,
+  lwd = 3,
+  cex = 1.7,
   bty = "o"
 )
+```
 
+#### Figure 3.b. Event: Daypatient care
+```{r figure3b, results = 'hide'}
 # fulldata event: Daypatient care
 # nelson-aalen estimator of cumulative incidences
+par(mfrow = c(1, 2), family = "sans")
 mvna.daypatient <- mvna(data_daypatient, states, transition_matrix, "cens")
 summary(mvna.daypatient)
 
 plot(
   mvna.daypatient,
   col = line_colors,
-  main = "Event: Daypatient Care",
+  ylim = c(0, 5),
   xlab = "Days",
-  lty = 1,
-  lwd = 2,
   font.lab = 2,
-  cex = 1.2,
-  legend = F
+  lty = 1,
+  lwd = 3,
+  legend = F,
+  cex.lab = 1.6,
+  cex.axis = 1.5
+)
+mtext(
+  "Event: Daypatient Care",
+  side = 3,
+  line = 1,
+  adj = 0,
+  font = 2,
+  cex = 1.6
 )
 legend(
   "topleft",
@@ -467,8 +494,8 @@ legend(
   legend = transitions,
   col = line_colors,
   lty = 1,
-  lwd = 2,
-  cex = 1.2,
+  lwd = 3,
+  cex = 1.7,
   bty = "o"
 )
 
@@ -489,9 +516,11 @@ plot(
   col = line_colors,
   xlab = "Days",
   lty = 1,
-  cex = 1.2,
-  lwd = 2,
-  font.lab = 2
+  lwd = 3,
+  font.lab = 2,
+  legend = F,
+  cex.lab = 1.6,
+  cex.axis = 1.5
 )
 legend(
   "topleft",
@@ -499,8 +528,8 @@ legend(
   legend = transitions,
   col = line_colors,
   lty = 1,
-  lwd = 2,
-  cex = 1.2,
+  lwd = 3,
+  cex = 1.7,
   bty = "o"
 )
 ```
