@@ -55,11 +55,23 @@ transition_matrix[2, 3] <- TRUE
 ### Table 2. Table of observed transitions
 
 ```{r possible_transitions}
-# Inpatient table of possible transitions
-knitr::kable(table(data_inpatient$from, data_inpatient$to), caption = "Table 2.a. Inpatient Stay")
+# Inpatient stay table of possible transitions
+knitr::kable(table(data_inpatient$from, data_inpatient$to), caption = "Table 2.a. Inpatient Stay - Complete")
 
-# Daypatient table of possible transitions
-knitr::kable(table(data_daypatient$from, data_daypatient$to), caption = "Table 2.b. Daypatient Care")
+knitr::kable(table(data_inpatient_sev$from, data_inpatient_sev$to),
+             caption = "Table 2.b. Inpatient Stay - SMI")
+
+knitr::kable(table(data_inpatient_ns$from, data_inpatient_ns$to),
+             caption = "Table 2.c. Inpatient Stay - non-SMI")
+
+# Daypatient care table of possible transitions
+knitr::kable(table(data_daypatient$from, data_daypatient$to), caption = "Table 2.d. Daypatient Care - Complete")
+
+knitr::kable(table(data_daypatient_sev$from, data_daypatient_sev$to),
+             caption = "Table 2.e. Daypatient Care - SMI")
+
+knitr::kable(table(data_daypatient_ns$from, data_daypatient_ns$to),
+             caption = "Table 2.f. Daypatient Care - non-SMI")
 ```
 
 ### Table 3. Cox proportional hazards model (final State "Inpatient Stay")
