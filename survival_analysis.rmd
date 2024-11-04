@@ -56,7 +56,8 @@ transition_matrix[2, 3] <- TRUE
 
 ```{r possible_transitions}
 # Inpatient stay table of possible transitions
-knitr::kable(table(data_inpatient$from, data_inpatient$to), caption = "Table 2.a. Inpatient Stay - Complete")
+knitr::kable(table(data_inpatient$from, data_inpatient$to), 
+             caption = "Table 2.a. Inpatient Stay - Complete")
 
 knitr::kable(table(data_inpatient_sev$from, data_inpatient_sev$to),
              caption = "Table 2.b. Inpatient Stay - SMI")
@@ -65,7 +66,8 @@ knitr::kable(table(data_inpatient_ns$from, data_inpatient_ns$to),
              caption = "Table 2.c. Inpatient Stay - non-SMI")
 
 # Daypatient care table of possible transitions
-knitr::kable(table(data_daypatient$from, data_daypatient$to), caption = "Table 2.d. Daypatient Care - Complete")
+knitr::kable(table(data_daypatient$from, data_daypatient$to), 
+             caption = "Table 2.d. Daypatient Care - Complete")
 
 knitr::kable(table(data_daypatient_sev$from, data_daypatient_sev$to),
              caption = "Table 2.e. Daypatient Care - SMI")
